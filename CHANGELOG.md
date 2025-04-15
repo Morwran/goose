@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v3.24.3-fork.1]
+
+- Added a new driver type: **clickhouse-cluster**.
+- Added a new flag: **--cluster** (defaults to **distributed_cluster**), which specifies the name of the ClickHouse cluster.
+- Added a new environment variable: **GOOSE_CLUSTER**,  which serves as an alternative way to specify the cluster name instead of using the **--cluster** flag.
+
 ## [v3.24.2]
 
 - Add `TableExists` table existence check for the mysql dialect (#895)
