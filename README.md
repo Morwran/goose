@@ -6,7 +6,7 @@ This is a [fork](https://github.com/pressly/goose) of a database migration tool 
   - Added a new flag: **--cluster** (defaults to **distributed_cluster**), which specifies the name of the ClickHouse cluster.
   - Added a new environment variable: **GOOSE_CLUSTER**,  which serves as an alternative way to specify the cluster name instead of using the **--cluster** flag.
 <details>
-  <summary><b>View details</summary>
+  <summary><b>View details</b></summary>
 
 <img align="right" width="125" src="assets/goose_logo.png">
 
