@@ -81,7 +81,13 @@ func NewProvider(dialect Dialect, db *sql.DB, fsys fs.FS, opts ...ProviderOption
 	var store database.Store
 	if dialect != "" {
 		var err error
-		store, err = database.NewStore(dialect, DefaultTablename)
+		switch dialect {
+		case DialectClickHouseCluster:
+			store, err = database.NewClusterStore(dialect, DefaultTablename, DefaultClusterName)
+		default:
+			store, err = database.NewStore(dialect, DefaultTablename)
+
+		}
 		if err != nil {
 			return nil, err
 		}

@@ -29,6 +29,7 @@ var (
 	flags        = flag.NewFlagSet("goose", flag.ExitOnError)
 	dir          = flags.String("dir", DefaultMigrationDir, "directory with migration files, (GOOSE_MIGRATION_DIR env variable supported)")
 	table        = flags.String("table", "", "migrations table name")
+	cluster      = flags.String("cluster", "", "migrations cluster name (e.g. for clickhouse cluster configuration)")
 	verbose      = flags.Bool("v", false, "enable verbose mode")
 	help         = flags.Bool("h", false, "print help")
 	versionFlag  = flags.Bool("version", false, "print version")
@@ -86,6 +87,8 @@ func main() {
 
 	// The order of precedence should be: flag > env variable > default value.
 	goose.SetTableName(firstNonEmpty(*table, envConfig.table, goose.DefaultTablename))
+
+	goose.SetClusterName(firstNonEmpty(*cluster, envConfig.cluster, goose.DefaultClusterName))
 
 	args := flags.Args()
 
@@ -266,6 +269,7 @@ Drivers:
     redshift
     tidb
     clickhouse
+    clickhouse-cluster
     vertica
     ydb
     turso
@@ -424,6 +428,7 @@ type envConfig struct {
 	dbstring string
 	dir      string
 	table    string
+	cluster  string
 	noColor  bool
 }
 
@@ -433,6 +438,7 @@ func loadEnvConfig() *envConfig {
 		driver:   envOr("GOOSE_DRIVER", ""),
 		dbstring: envOr("GOOSE_DBSTRING", ""),
 		table:    envOr("GOOSE_TABLE", ""),
+		cluster:  envOr("GOOSE_CLUSTER", ""),
 		dir:      envOr("GOOSE_MIGRATION_DIR", DefaultMigrationDir),
 		// https://no-color.org/
 		noColor: noColorBool,
@@ -445,6 +451,7 @@ func (c *envConfig) listEnvs() []envVar {
 		{Name: "GOOSE_DBSTRING", Value: c.dbstring},
 		{Name: "GOOSE_MIGRATION_DIR", Value: c.dir},
 		{Name: "GOOSE_TABLE", Value: c.table},
+		{Name: "GOOSE_CLUSTER", Value: c.cluster},
 		{Name: "NO_COLOR", Value: strconv.FormatBool(c.noColor)},
 	}
 }

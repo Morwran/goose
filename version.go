@@ -39,7 +39,10 @@ func VersionContext(ctx context.Context, db *sql.DB, dir string, opts ...Options
 	return nil
 }
 
-var tableName = "goose_db_version"
+var (
+	tableName   = "goose_db_version"
+	clusterName = DefaultClusterName
+)
 
 // TableName returns goose db version table name
 func TableName() string {
@@ -49,4 +52,14 @@ func TableName() string {
 // SetTableName set goose db version table name
 func SetTableName(n string) {
 	tableName = n
+}
+
+// ClusterName returns goose db cluster name
+func ClusterName() string {
+	return clusterName
+}
+
+// SetClusterName set goose db cluster name
+func SetClusterName(n string) {
+	clusterName = n
 }

@@ -12,6 +12,8 @@ const (
 	// DefaultTablename is the default name of the database table used to track history of applied
 	// migrations.
 	DefaultTablename = "goose_db_version"
+	// DefaultClusterName is the default name of the database cluster.
+	DefaultClusterName = "distributed_cluster"
 )
 
 // ProviderOption is a configuration option for a goose goose.

@@ -13,17 +13,18 @@ import (
 type Dialect string
 
 const (
-	DialectClickHouse Dialect = "clickhouse"
-	DialectMSSQL      Dialect = "mssql"
-	DialectMySQL      Dialect = "mysql"
-	DialectPostgres   Dialect = "postgres"
-	DialectRedshift   Dialect = "redshift"
-	DialectSQLite3    Dialect = "sqlite3"
-	DialectTiDB       Dialect = "tidb"
-	DialectTurso      Dialect = "turso"
-	DialectVertica    Dialect = "vertica"
-	DialectYdB        Dialect = "ydb"
-	DialectStarrocks  Dialect = "starrocks"
+	DialectClickHouse        Dialect = "clickhouse"
+	DialectClickHouseCluster Dialect = "clickhouse-cluster"
+	DialectMSSQL             Dialect = "mssql"
+	DialectMySQL             Dialect = "mysql"
+	DialectPostgres          Dialect = "postgres"
+	DialectRedshift          Dialect = "redshift"
+	DialectSQLite3           Dialect = "sqlite3"
+	DialectTiDB              Dialect = "tidb"
+	DialectTurso             Dialect = "turso"
+	DialectVertica           Dialect = "vertica"
+	DialectYdB               Dialect = "ydb"
+	DialectStarrocks         Dialect = "starrocks"
 )
 
 // NewStore returns a new [Store] implementation for the given dialect.
@@ -51,6 +52,31 @@ func NewStore(dialect Dialect, tablename string) (Store, error) {
 	if !ok {
 		return nil, fmt.Errorf("unknown dialect: %q", dialect)
 	}
+	return &store{
+		tablename: tablename,
+		querier:   dialectquery.NewQueryController(querier),
+	}, nil
+}
+
+// NewClusterStore returns a new cluster [Store] implementation for the given dialect.
+func NewClusterStore(dialect Dialect, tablename, clusterName string) (Store, error) {
+	var querier dialectquery.Querier
+	if tablename == "" {
+		return nil, errors.New("table name must not be empty")
+	}
+	if clusterName == "" {
+		return nil, errors.New("cluster name must not be empty")
+	}
+	if dialect == "" {
+		return nil, errors.New("dialect must not be empty")
+	}
+	switch dialect {
+	case DialectClickHouseCluster:
+		querier = &dialectquery.ClickhouseCluster{ClusterName: clusterName}
+	default:
+		return nil, fmt.Errorf("unknown cluster dialect: %q", dialect)
+	}
+
 	return &store{
 		tablename: tablename,
 		querier:   dialectquery.NewQueryController(querier),

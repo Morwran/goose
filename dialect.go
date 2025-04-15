@@ -11,16 +11,17 @@ import (
 type Dialect = database.Dialect
 
 const (
-	DialectClickHouse Dialect = database.DialectClickHouse
-	DialectMSSQL      Dialect = database.DialectMSSQL
-	DialectMySQL      Dialect = database.DialectMySQL
-	DialectPostgres   Dialect = database.DialectPostgres
-	DialectRedshift   Dialect = database.DialectRedshift
-	DialectSQLite3    Dialect = database.DialectSQLite3
-	DialectTiDB       Dialect = database.DialectTiDB
-	DialectVertica    Dialect = database.DialectVertica
-	DialectYdB        Dialect = database.DialectYdB
-	DialectStarrocks  Dialect = database.DialectStarrocks
+	DialectClickHouse        Dialect = database.DialectClickHouse
+	DialectClickHouseCluster Dialect = database.DialectClickHouseCluster
+	DialectMSSQL             Dialect = database.DialectMSSQL
+	DialectMySQL             Dialect = database.DialectMySQL
+	DialectPostgres          Dialect = database.DialectPostgres
+	DialectRedshift          Dialect = database.DialectRedshift
+	DialectSQLite3           Dialect = database.DialectSQLite3
+	DialectTiDB              Dialect = database.DialectTiDB
+	DialectVertica           Dialect = database.DialectVertica
+	DialectYdB               Dialect = database.DialectYdB
+	DialectStarrocks         Dialect = database.DialectStarrocks
 )
 
 func init() {
@@ -47,6 +48,8 @@ func SetDialect(s string) error {
 		d = dialect.Tidb
 	case "clickhouse":
 		d = dialect.Clickhouse
+	case "clickhouse-cluster":
+		d = dialect.ClickhouseCluster
 	case "vertica":
 		d = dialect.Vertica
 	case "ydb":
@@ -59,6 +62,11 @@ func SetDialect(s string) error {
 		return fmt.Errorf("%q: unknown dialect", s)
 	}
 	var err error
-	store, err = dialect.NewStore(d)
+	switch d {
+	case dialect.ClickhouseCluster:
+		store, err = dialect.NewClusterStore(d, ClusterName())
+	default:
+		store, err = dialect.NewStore(d)
+	}
 	return err
 }

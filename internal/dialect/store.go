@@ -77,6 +77,18 @@ func NewStore(d Dialect) (Store, error) {
 	return &store{querier: querier}, nil
 }
 
+// NewClusterStore returns a new Cluster Store for the given dialect.
+func NewClusterStore(d Dialect, clusterName string) (Store, error) {
+	var querier dialectquery.Querier
+	switch d {
+	case ClickhouseCluster:
+		querier = &dialectquery.ClickhouseCluster{ClusterName: clusterName}
+	default:
+		return nil, fmt.Errorf("unknown querier cluster dialect: %v", d)
+	}
+	return &store{querier: querier}, nil
+}
+
 type GetMigrationResult struct {
 	IsApplied bool
 	Timestamp time.Time

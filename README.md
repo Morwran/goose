@@ -1,4 +1,12 @@
 # goose
+This is a [fork](https://github.com/pressly/goose) of a database migration tool modified to support ClickHouse cluster migrations.
+#### Changes
+
+  - Added a new driver type: **clickhouse-cluster**.
+  - Added a new flag: **--cluster** (defaults to **distributed_cluster**), which specifies the name of the ClickHouse cluster.
+  - Added a new environment variable: **GOOSE_CLUSTER**,  which serves as an alternative way to specify the cluster name instead of using the **--cluster** flag.
+<details>
+  <summary><b>View details</summary>
 
 <img align="right" width="125" src="assets/goose_logo.png">
 
@@ -77,6 +85,7 @@ Drivers:
     redshift
     tidb
     clickhouse
+    clickhouse-cluster
     vertica
     ydb
     starrocks
@@ -111,6 +120,8 @@ Options:
         applies missing (out-of-order) migrations
   -certfile string
         file path to root CA's certificates in pem format (only support on mysql)
+  -cluster string
+        migrations cluster name (e.g. for clickhouse cluster configuration)
   -dir string
         directory with migration files (default ".", can be set via the GOOSE_MIGRATION_DIR env variable).
   -h    print help
@@ -493,3 +504,4 @@ Blog](https://go.dev/blog/gopher). Adapted by Ellen.
 ## License
 
 Licensed under [MIT License](./LICENSE)
+</details>
