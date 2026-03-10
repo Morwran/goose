@@ -6,6 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.33.1
+	github.com/expr-lang/expr v1.17.6
 	github.com/go-sql-driver/mysql v1.9.1
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/joho/godotenv v1.5.1

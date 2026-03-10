@@ -17,15 +17,42 @@ list-build-tags:
 		--no-line-number --no-filename | sort | uniq | \
 		xargs -n 4 | column -t | sed 's/^/  /')"
 
+GO?=$(shell which go)
+
+os?=$(shell $(GO) env GOOS)
+arch?=$(shell $(GO) env GOARCH)
+
+.PHONY: go-deps
+go-deps: ##install project dependencies
+	@echo Check go modules dependencies... && \
+	$(GO) mod tidy && $(GO) mod vendor && $(GO) mod verify && \
+	echo -=OK=-
+
+APP?=goose
+OUT?=$(CURDIR)/bin/$(APP)
+
+GOOSE_APP?=$(APP)-$(os)-$(arch)
+GOOSE_OUT?=$(CURDIR)/bin/$(GOOSE_APP)
+
+.PHONY: goose
+goose: ##build goose. Usage: make goose [os=<linux|darwin>] [arch=<amd64|arm64>]
+	@$(MAKE) go-deps && \
+	mkdir -p "$(CURDIR)/bin" && \
+	echo build '$(GOOSE_APP)' for OS/ARCH='$(os)'/'$(arch)' ... && \
+	echo into '$(GOOSE_OUT)' && \
+	env GOOS=$(os) GOARCH=$(arch) \
+	$(GO) build -o $(GOOSE_OUT) $(CURDIR)/cmd/$(APP) &&\
+	echo -=OK=-
+
 .PHONY: dist
 dist:
 	@mkdir -p ./bin
 	@rm -f ./bin/*
-	GOOS=darwin  GOARCH=amd64 go build -o ./bin/goose-darwin64       ./cmd/goose
-	GOOS=linux   GOARCH=amd64 go build -o ./bin/goose-linux64        ./cmd/goose
-	GOOS=linux   GOARCH=386   go build -o ./bin/goose-linux386       ./cmd/goose
-	GOOS=windows GOARCH=amd64 go build -o ./bin/goose-windows64.exe  ./cmd/goose
-	GOOS=windows GOARCH=386   go build -o ./bin/goose-windows386.exe ./cmd/goose
+	GOOS=darwin  GOARCH=amd64 $(GO) build -o ./bin/goose-darwin64       ./cmd/goose
+	GOOS=linux   GOARCH=amd64 $(GO) build -o ./bin/goose-linux64        ./cmd/goose
+	GOOS=linux   GOARCH=386   $(GO) build -o ./bin/goose-linux386       ./cmd/goose
+	GOOS=windows GOARCH=amd64 $(GO) build -o ./bin/goose-windows64.exe  ./cmd/goose
+	GOOS=windows GOARCH=386   $(GO) build -o ./bin/goose-windows386.exe ./cmd/goose
 
 .PHONY: clean
 clean:

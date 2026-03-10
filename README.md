@@ -5,6 +5,7 @@ This is a [fork](https://github.com/pressly/goose) of a database migration tool 
   - Added a new driver type: **clickhouse-cluster**.
   - Added a new flag: **--cluster** (defaults to **distributed_cluster**), which specifies the name of the ClickHouse cluster.
   - Added a new environment variable: **GOOSE_CLUSTER**,  which serves as an alternative way to specify the cluster name instead of using the **--cluster** flag.
+  - Added fork-specific conditional SQL blocks for migrations: `-- +goose WHEN <expr>` / `-- +goose ELSE` / `-- +goose END WHEN` (see [Conditional SQL blocks](#conditional-sql-blocks-when--else--end-when)).
 <details>
   <summary><b>View details</b></summary>
 
@@ -383,6 +384,55 @@ See
 for more details on supported expansions.
 
 </details>
+
+### Conditional SQL blocks (WHEN / ELSE / END WHEN)
+
+This feature is specific to this fork.
+
+Goose supports conditional blocks in SQL migrations that let you include or exclude parts of a
+migration based on a boolean expression.
+
+Syntax:
+
+```sql
+-- +goose WHEN <expr>
+  -- emitted if <expr> is true
+
+-- +goose WHEN <expr>
+  -- ELSEIF: evaluated only if no previous WHEN matched
+
+-- +goose ELSE
+  -- optional: emitted if no WHEN matched
+
+-- +goose END WHEN
+```
+
+Rules:
+
+- Blocks are not nestable.
+- The first `WHEN` whose expression evaluates to `true` wins; other branches are skipped.
+- `ELSE` is optional. If nothing matches and there is no `ELSE`, the block produces no output.
+- `WHEN` after `ELSE` is invalid.
+- Every block must be closed with `-- +goose END WHEN`.
+
+Expression language:
+
+- Supported operators: `!`, `&&`, `||`, `==`, `!=`, parentheses.
+- `${NAME}` expands to the environment variable value as a string. Unset variables expand to `""`.
+- `defined("NAME")` returns `true` if the environment variable exists (even if it is empty).
+- `in(value, "a", "b", ...)` returns `true` if `value` is one of the listed options.
+
+Example:
+
+```sql
+-- +goose Up
+
+-- +goose WHEN ${PROFILE}=="cluster"
+SELECT 1; -- cluster-only SQL
+-- +goose ELSE
+SELECT 2; -- non-cluster SQL
+-- +goose END WHEN
+```
 
 ## Embedded sql migrations
 

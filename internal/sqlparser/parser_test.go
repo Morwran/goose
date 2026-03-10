@@ -397,6 +397,7 @@ func TestValidUp(t *testing.T) {
 		{Name: "test07", StatementsCount: 1},
 		{Name: "test08", StatementsCount: 6},
 		{Name: "test09", StatementsCount: 1},
+		{Name: "test10", StatementsCount: 1},
 	}
 	for _, tc := range tests {
 		path := filepath.Join("testdata", "valid-up", tc.Name)
@@ -461,6 +462,55 @@ func compareStatements(t *testing.T, dir string, statements []string, direction 
 func isCIEnvironment() bool {
 	ok, _ := strconv.ParseBool(os.Getenv("CI"))
 	return ok
+}
+
+func TestWhen(t *testing.T) {
+	// Do not run in parallel, as this test sets environment variables.
+
+	tests := []struct {
+		Name      string
+		UpCount   int
+		DownCount int
+		Env       map[string]string
+	}{
+		// test01: WHEN true condition — emits the WHEN branch.
+		{Name: "test01", UpCount: 1, DownCount: 1, Env: map[string]string{"WHEN_PROFILE": "cluster"}},
+		// test02: WHEN/ELSE — false condition falls through to ELSE.
+		{Name: "test02", UpCount: 1, DownCount: 1, Env: map[string]string{"WHEN_PROFILE": "standalone"}},
+		// test03: WHEN/WHEN(ELSEIF)/ELSE — second branch matches.
+		{Name: "test03", UpCount: 1, DownCount: 1, Env: map[string]string{"WHEN_PROFILE": "standalone"}},
+		// test04: No branch matched, no ELSE — empty block output.
+		{Name: "test04", UpCount: 2, DownCount: 1, Env: map[string]string{"WHEN_PROFILE": "other"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.Name, func(t *testing.T) {
+			for k, v := range tc.Env {
+				t.Setenv(k, v)
+			}
+			dir := filepath.Join("testdata", "when", tc.Name)
+			testValid(t, dir, tc.UpCount, DirectionUp)
+			testValid(t, dir, tc.DownCount, DirectionDown)
+		})
+	}
+}
+
+func TestWhenInvalid(t *testing.T) {
+	// Do not run in parallel, as some invalid files might reference env vars.
+	t.Setenv("WHEN_PROFILE", "cluster")
+
+	testdataDir := filepath.Join("testdata", "when", "invalid")
+	entries, err := os.ReadDir(testdataDir)
+	require.NoError(t, err)
+	require.NotEmpty(t, entries)
+
+	for _, entry := range entries {
+		t.Run(entry.Name(), func(t *testing.T) {
+			by, err := os.ReadFile(filepath.Join(testdataDir, entry.Name()))
+			require.NoError(t, err)
+			_, _, err = ParseSQLMigration(strings.NewReader(string(by)), DirectionUp, false)
+			require.Error(t, err, "expected error for invalid file %s", entry.Name())
+		})
+	}
 }
 
 func TestEnvsub(t *testing.T) {
@@ -574,6 +624,36 @@ func Test_extractAnnotation(t *testing.T) {
 			input:   "-- +goose +goose Up",
 			want:    "",
 			wantErr: true,
+		},
+		{
+			name:    "WHEN with expression",
+			input:   `-- +goose WHEN ${PROFILE}=="cluster"`,
+			want:    annotationWhen,
+			wantErr: false,
+		},
+		{
+			name:    "WHEN without expression",
+			input:   "-- +goose WHEN",
+			want:    annotationWhen,
+			wantErr: false,
+		},
+		{
+			name:    "ELSE",
+			input:   "-- +goose ELSE",
+			want:    annotationElse,
+			wantErr: false,
+		},
+		{
+			name:    "END WHEN",
+			input:   "-- +goose END WHEN",
+			want:    annotationEndWhen,
+			wantErr: false,
+		},
+		{
+			name:    "WHEN case insensitive",
+			input:   `-- +goose when ${X}=="1"`,
+			want:    annotationWhen,
+			wantErr: false,
 		},
 	}
 

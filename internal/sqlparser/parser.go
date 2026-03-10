@@ -111,6 +111,7 @@ func ParseSQLMigration(r io.Reader, direction Direction, debug bool) (stmts []st
 	stateMachine := newStateMachine(start, debug)
 	useTx = true
 	useEnvsub := false
+	var cond condBlock
 
 	var buf bytes.Buffer
 	for scanner.Scan() {
@@ -190,6 +191,24 @@ func ParseSQLMigration(r io.Reader, direction Direction, debug bool) (stmts []st
 				useEnvsub = false
 				continue
 
+			case annotationWhen:
+				if err := cond.handleWhen(extractWhenExpr(line)); err != nil {
+					return nil, false, fmt.Errorf("WHEN block error on line %q: %w", line, err)
+				}
+				continue
+
+			case annotationElse:
+				if err := cond.handleElse(); err != nil {
+					return nil, false, fmt.Errorf("WHEN block error on line %q: %w", line, err)
+				}
+				continue
+
+			case annotationEndWhen:
+				if err := cond.handleEndWhen(); err != nil {
+					return nil, false, fmt.Errorf("WHEN block error on line %q: %w", line, err)
+				}
+				continue
+
 			default:
 				return nil, false, fmt.Errorf("unknown annotation: %q", cmd)
 			}
@@ -203,6 +222,10 @@ func ParseSQLMigration(r io.Reader, direction Direction, debug bool) (stmts []st
 				stateMachine.print("ignore comment")
 				continue
 			}
+		}
+		// If inside a WHEN block and current branch is not active, skip the line.
+		if !cond.isEmitting() {
+			continue
 		}
 		switch stateMachine.get() {
 		case gooseStatementEndDown, gooseStatementEndUp:
@@ -278,6 +301,9 @@ func ParseSQLMigration(r io.Reader, direction Direction, debug bool) (stmts []st
 	case gooseStatementBeginUp, gooseStatementBeginDown:
 		return nil, false, errors.New("failed to parse migration: missing '-- +goose StatementEnd' annotation")
 	}
+	if cond.active {
+		return nil, false, errors.New("failed to parse migration: unclosed WHEN block, missing '-- +goose END WHEN'")
+	}
 
 	if bufferRemaining := strings.TrimSpace(buf.String()); len(bufferRemaining) > 0 {
 		return nil, false, missingSemicolonError(stateMachine.state, direction, bufferRemaining)
@@ -288,6 +314,10 @@ func ParseSQLMigration(r io.Reader, direction Direction, debug bool) (stmts []st
 
 type annotation string
 
+func (a annotation) String() string {
+	return string(a)
+}
+
 const (
 	annotationUp             annotation = "Up"
 	annotationDown           annotation = "Down"
@@ -296,16 +326,44 @@ const (
 	annotationNoTransaction  annotation = "NO TRANSACTION"
 	annotationEnvsubOn       annotation = "ENVSUB ON"
 	annotationEnvsubOff      annotation = "ENVSUB OFF"
+	annotationWhen           annotation = "WHEN"
+	annotationElse           annotation = "ELSE"
+	annotationEndWhen        annotation = "END WHEN"
 )
 
-var supportedAnnotations = map[annotation]struct{}{
-	annotationUp:             {},
-	annotationDown:           {},
-	annotationStatementBegin: {},
-	annotationStatementEnd:   {},
-	annotationNoTransaction:  {},
-	annotationEnvsubOn:       {},
-	annotationEnvsubOff:      {},
+type annotationKind interface {
+	matchAnnotation(key, cmd string) bool
+}
+
+// exactMatch matches the full command string (case-insensitive).
+type exactMatch struct{}
+
+func (exactMatch) matchAnnotation(key, cmd string) bool {
+	return strings.EqualFold(key, cmd)
+}
+
+// prefixMatch matches by prefix (case-insensitive), allowing a trailing expression after a space.
+type prefixMatch struct{}
+
+func (prefixMatch) matchAnnotation(key, cmd string) bool {
+	if strings.EqualFold(key, cmd) {
+		return true
+	}
+	return len(cmd) > len(key) && cmd[len(key)] == ' ' &&
+		strings.EqualFold(cmd[:len(key)], key)
+}
+
+var supportedAnnotations = map[annotation]annotationKind{
+	annotationUp:             exactMatch{},
+	annotationDown:           exactMatch{},
+	annotationStatementBegin: exactMatch{},
+	annotationStatementEnd:   exactMatch{},
+	annotationNoTransaction:  exactMatch{},
+	annotationEnvsubOn:       exactMatch{},
+	annotationEnvsubOff:      exactMatch{},
+	annotationWhen:           prefixMatch{},
+	annotationElse:           exactMatch{},
+	annotationEndWhen:        exactMatch{},
 }
 
 var (
@@ -341,8 +399,8 @@ func extractAnnotation(line string) (annotation, error) {
 
 	a := annotation(cmd)
 
-	for s := range supportedAnnotations {
-		if strings.EqualFold(string(s), string(a)) {
+	for s, kind := range supportedAnnotations {
+		if kind.matchAnnotation(s.String(), a.String()) {
 			return s, nil
 		}
 	}
